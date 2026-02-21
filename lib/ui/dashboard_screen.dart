@@ -376,7 +376,142 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 }
+////////////////
 
+// ─── iOS GPS Enable Dialog ────────────────────────────────────────────────────
+// Styled to match iOS native system alert appearance.
+// Apple does not expose a programmatic GPS enable API like Android,
+// so we show this dialog then redirect to Location Settings.
+
+class _IosGpsDialog extends StatelessWidget {
+  const _IosGpsDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          // iOS system alert uses a frosted white background
+          color: const Color(0xFFF2F2F7),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Icon ────────────────────────────────────────────────────────
+            const SizedBox(height: 24),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFF007AFF).withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_on_rounded,
+                color: Color(0xFF007AFF), // iOS blue
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Title ───────────────────────────────────────────────────────
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Location Services Off',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF000000),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // ── Body ────────────────────────────────────────────────────────
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'To track your speed and distance, enable Location Services in Settings.\n\n'
+                'Go to:\nSettings → Privacy → Location Services',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF3C3C43),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Divider ─────────────────────────────────────────────────────
+            const Divider(height: 1, color: Color(0xFFD1D1D6)),
+
+            // ── Buttons — iOS style: stacked, full width ─────────────────────
+            // "Settings" button (primary — blue)
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Open Settings',
+                  style: TextStyle(
+                    color: Color(0xFF007AFF),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+
+            // Divider between buttons
+            const Divider(height: 1, color: Color(0xFFD1D1D6)),
+
+            // "Not Now" button (secondary — normal weight blue)
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Not Now',
+                  style: TextStyle(
+                    color: Color(0xFF007AFF),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
+      ),
+    );
+  }
+}
 // ─── Trip Button ──────────────────────────────────────────────────────────────
 
 class _TripButton extends StatelessWidget {
