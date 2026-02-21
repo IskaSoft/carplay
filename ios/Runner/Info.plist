@@ -2,48 +2,111 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Carplay</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>carplay</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
+    <!-- ── App identity ──────────────────────────────────────────────── -->
+    <key>CFBundleName</key>
+    <string>CarPlay</string>
+    <key>CFBundleDisplayName</key>
+    <string>CarPlay</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(FLUTTER_BUILD_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <!-- ── Location permissions ──────────────────────────────────────── -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>CarPlay needs your location to display your current speed while driving.</string>
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>CarPlay needs background location access to continue tracking your speed when the screen is off.</string>
+
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>CarPlay uses background location to track your speed while driving with the screen off.</string>
+
+    <!-- ── Background modes ───────────────────────────────────────────── -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>        <!-- Background GPS -->
+        <string>fetch</string>           <!-- Background fetch for flutter_background_service -->
+        <string>processing</string>      <!-- BGTaskScheduler -->
+    </array>
+
+    <!-- ── CarPlay ────────────────────────────────────────────────────── -->
+    <!-- Declares CarPlay entitlement usage (must match provisioning profile) -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <true/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <!-- Phone UI scene -->
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>FlutterSceneDelegate</string>
+                </dict>
+            </array>
+
+
+	<!-- Background location -->
+<key>UIBackgroundModes</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>location</string>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
+
+<!-- Location permission messages -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>CarPlay needs location to track your speed while driving.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>CarPlay needs background location to track speed when screen is off.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>CarPlay needs background location to track speed when screen is off.</string>
+
+            <!-- CarPlay main display scene -->
+            <key>CPTemplateApplicationSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>CarPlay Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).CarPlaySceneDelegate</string>
+                </dict>
+            </array>
+            <!-- CarPlay dashboard (optional compact view) -->
+            <key>CPTemplateApplicationDashboardSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>CarPlay Dashboard Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).CarPlayDashboardSceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+
+    <!-- ── Launch storyboard ─────────────────────────────────────────── -->
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string></string>
+
+    <!-- ── Supported orientations ────────────────────────────────────── -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
 </dict>
 </plist>
