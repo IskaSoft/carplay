@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:location/location.dart' as loc;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:carplay/core/trip_manager.dart';
 import 'package:carplay/platform_bridge/car_data_sender.dart';
@@ -88,10 +89,24 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // Shows the NATIVE Android "enable location" system dialog —
-  // the same one shown in the screenshot with "No thanks" / "Enable" buttons.
-  Future<void> _showGpsDisabledDialog() async {
-    await Geolocator.openLocationSettings();
+  // Shows the NATIVE Android "enable location" popup dialog using the
+  // location package which calls GoogleApiClient LocationSettingsRequest —
+  // the exact same dialog with "No thanks" / "Enable" buttons.
+  // Returns true if user enabled GPS, false if they declined.
+  Future<bool> _requestGpsEnable() async {
+    final location = loc.Location();
+    try {
+      // requestService() shows the native Android GPS enable dialog.
+      // If GPS is already on it returns true immediately.
+      // If user taps "Enable" it returns true.
+      // If user taps "No thanks" it returns false.
+      final enabled = await location.requestService();
+      return enabled;
+    } catch (_) {
+      // Fallback: open location settings page if dialog fails
+      await Geolocator.openLocationSettings();
+      return false;
+    }
   }
 
   Future<void> _toggleTrip(TripState trip) async {
@@ -108,15 +123,18 @@ class _DashboardScreenState extends State<DashboardScreen>
       final gpsEnabled =
           await PermissionService.instance.isLocationServiceEnabled();
       if (!gpsEnabled) {
-        if (mounted) await _showGpsDisabledDialog();
-        return;
+        // Show native Android "enable GPS" popup dialog
+        final userEnabled = await _requestGpsEnable();
+        if (!userEnabled) return; // User tapped "No thanks" — do nothing
+        // User tapped "Enable" — GPS is now on, continue starting trip
       }
 
       await WakelockPlus.enable();
       final started = await trip.startTrip();
       if (!started) {
         await WakelockPlus.disable();
-        if (mounted) await _showGpsDisabledDialog();
+        // GPS still not available after enable attempt — open settings
+        if (mounted) await _requestGpsEnable();
       }
     } else if (trip.status == TripStatus.driving) {
       final result = await trip.stopTrip();
