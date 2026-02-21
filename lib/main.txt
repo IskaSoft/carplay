@@ -1,0 +1,128 @@
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:hive_flutter/hive_flutter.dart';
+// import 'package:provider/provider.dart';
+
+// import 'package:carplay/core/trip_manager.dart';
+// import 'package:carplay/models/location_point.dart';
+// import 'package:carplay/models/trip_data.dart';
+// import 'package:carplay/services/background_service.dart';
+// import 'package:carplay/ui/dashboard_screen.dart';
+
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+
+//   // ── Hive setup ────────────────────────────────────────────────────────────
+//   await Hive.initFlutter();
+//   Hive.registerAdapter(LocationPointAdapter());
+//   Hive.registerAdapter(TripDataAdapter());
+//   await Hive.openBox<TripData>('trips');
+//   await Hive.openBox('settings');
+
+//   // ── Background service ───────────────────────────────────────────────────
+//   await BackgroundServiceManager.initialize();
+
+//   // ── System UI ────────────────────────────────────────────────────────────
+//   SystemChrome.setSystemUIOverlayStyle(
+//     const SystemUiOverlayStyle(
+//       statusBarColor: Colors.transparent,
+//       statusBarIconBrightness: Brightness.light,
+//     ),
+//   );
+
+//   runApp(
+//     ChangeNotifierProvider.value(
+//       value: TripState.instance,
+//       child: const CarPlayApp(),
+//     ),
+//   );
+// }
+
+// class CarPlayApp extends StatelessWidget {
+//   const CarPlayApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'CarPlay',
+//       debugShowCheckedModeBanner: false,
+//       theme: ThemeData(
+//         brightness: Brightness.dark,
+//         scaffoldBackgroundColor: const Color(0xFF0A0A0F),
+//         colorScheme: const ColorScheme.dark(
+//           primary: Color(0xFF00E676),
+//           surface: Color(0xFF12121E),
+//         ),
+//         fontFamily: 'SF Pro Display', // falls back to system sans-serif
+//         useMaterial3: true,
+//       ),
+//       home: const DashboardScreen(),
+//     );
+//   }
+// }
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:hive_flutter/hive_flutter.dart';
+// import 'package:provider/provider.dart';
+
+// import 'package:carplay/core/trip_manager.dart';
+// import 'package:carplay/models/location_point.dart';
+// import 'package:carplay/models/trip_data.dart';
+// import 'package:carplay/services/background_service.dart';
+// import 'package:carplay/ui/dashboard_screen.dart';
+
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+
+//   // ── Hive setup ────────────────────────────────────────────────────────────
+//   await Hive.initFlutter();
+//   Hive.registerAdapter(LocationPointAdapter());
+//   Hive.registerAdapter(TripDataAdapter());
+//   await Hive.openBox<TripData>('trips');
+//   await Hive.openBox('settings');
+
+//   // ── Background service ───────────────────────────────────────────────────
+//   await BackgroundServiceManager.initialize();
+
+//   // ── System UI ────────────────────────────────────────────────────────────
+//   SystemChrome.setSystemUIOverlayStyle(
+//     const SystemUiOverlayStyle(
+//       statusBarColor: Colors.transparent,
+//       statusBarIconBrightness: Brightness.light,
+//     ),
+//   );
+
+//   runApp(
+//     ChangeNotifierProvider.value(
+//       value: TripState.instance,
+//       child: const CarPlayApp(),
+//     ),
+//   );
+// }
+
+// class CarPlayApp extends StatelessWidget {
+//   const CarPlayApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'CarPlay',
+//       debugShowCheckedModeBanner: false,
+//       theme: ThemeData(
+//         brightness: Brightness.dark,
+//         scaffoldBackgroundColor: const Color(0xFF0A0A0F),
+//         colorScheme: const ColorScheme.dark(
+//           primary: Color(0xFF00E676),
+//           surface: Color(0xFF12121E),
+//         ),
+//         fontFamily: 'SF Pro Display', // falls back to system sans-serif
+//         useMaterial3: true,
+//       ),
+//       home: const DashboardScreen(),
+//     );
+//   }
+// }

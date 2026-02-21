@@ -1,0 +1,1192 @@
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:provider/provider.dart';
+// import 'package:wakelock_plus/wakelock_plus.dart';
+// import 'package:carplay/core/trip_manager.dart';
+// import 'package:carplay/platform_bridge/car_data_sender.dart';
+// import 'package:carplay/services/permission_service.dart';
+// import 'package:carplay/ui/settings_screen.dart';
+// import 'package:carplay/ui/trip_screen.dart';
+// import 'package:carplay/ui/widgets/speed_gauge.dart';
+// import 'package:carplay/ui/widgets/stat_card.dart';
+// import 'package:carplay/ui/widgets/gps_status_bar.dart';
+
+// class DashboardScreen extends StatefulWidget {
+//   const DashboardScreen({super.key});
+
+//   @override
+//   State<DashboardScreen> createState() => _DashboardScreenState();
+// }
+
+// class _DashboardScreenState extends State<DashboardScreen>
+//     with WidgetsBindingObserver {
+//   bool _useImperial = false;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addObserver(this);
+//     // Lock to portrait while in phone UI; car display handles landscape
+//     SystemChrome.setPreferredOrientations([
+//       DeviceOrientation.portraitUp,
+//       DeviceOrientation.landscapeLeft,
+//       DeviceOrientation.landscapeRight,
+//     ]);
+//     _checkPermissions();
+//   }
+
+//   @override
+//   void dispose() {
+//     WidgetsBinding.instance.removeObserver(this);
+//     WakelockPlus.disable();
+//     super.dispose();
+//   }
+
+//   Future<void> _checkPermissions() async {
+//     final ok = await PermissionService.instance.hasLocationPermission();
+//     if (!ok && mounted) {
+//       _showPermissionDialog();
+//     }
+//   }
+
+//   void _showPermissionDialog() {
+//     showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder:
+//           (_) => AlertDialog(
+//             title: const Text('Location Required'),
+//             content: const Text(
+//               'Carplay needs precise location access (including background) '
+//               'to track your speed while driving.',
+//             ),
+//             actions: [
+//               TextButton(
+//                 onPressed: () async {
+//                   Navigator.pop(context);
+//                   final granted = await PermissionService.instance.requestAll();
+//                   if (!granted && mounted) {
+//                     PermissionService.instance.openSettings();
+//                   }
+//                 },
+//                 child: const Text('Grant Access'),
+//               ),
+//             ],
+//           ),
+//     );
+//   }
+
+//   Future<void> _toggleTrip(TripState trip) async {
+//     if (trip.status == TripStatus.idle || trip.status == TripStatus.stopped) {
+//       final ok = await PermissionService.instance.hasLocationPermission();
+//       if (!ok) {
+//         _showPermissionDialog();
+//         return;
+//       }
+//       await WakelockPlus.enable();
+//       await trip.startTrip();
+//     } else if (trip.status == TripStatus.driving) {
+//       final finished = await trip.stopTrip();
+//       await WakelockPlus.disable();
+//       if (finished != null && mounted) {
+//         Navigator.push(
+//           context,
+//           MaterialPageRoute(builder: (_) => TripScreen(trip: finished)),
+//         );
+//       }
+//     } else if (trip.status == TripStatus.paused) {
+//       trip.resumeTrip();
+//     }
+//   }
+
+//   void _pauseTrip(TripState trip) {
+//     if (trip.status == TripStatus.driving) {
+//       trip.pauseTrip();
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Consumer<TripState>(
+//       builder: (context, trip, _) {
+//         // Send data to car display every rebuild (throttled by GPS ~1 Hz)
+//         CarDataSender.instance.sendUpdate(
+//           currentSpeedKmh: trip.currentSpeedKmh,
+//           averageSpeedKmh: trip.averageSpeedKmh,
+//           totalDistanceMeters: trip.totalDistanceMeters,
+//           movingTimeSeconds: trip.movingTimeSeconds,
+//           tripStatus: trip.status.name,
+//           useImperial: _useImperial,
+//         );
+
+//         return Scaffold(
+//           backgroundColor: const Color(0xFF0A0A0F),
+//           appBar: _buildAppBar(context, trip),
+//           body: SafeArea(
+//             child: Column(
+//               children: [
+//                 GpsStatusBar(
+//                   isLost: trip.gpsSignalLost,
+//                   isTracking: trip.status == TripStatus.driving,
+//                 ),
+//                 Expanded(child: _buildBody(context, trip)),
+//                 _buildControls(context, trip),
+//                 const SizedBox(height: 24),
+//               ],
+//             ),
+//           ),
+//         );
+//       },
+//     );
+//   }
+
+//   PreferredSizeWidget _buildAppBar(BuildContext context, TripState trip) {
+//     return AppBar(
+//       backgroundColor: const Color(0xFF0A0A0F),
+//       elevation: 0,
+//       title: Row(
+//         children: [
+//           const Text(
+//             'CarPlay',
+//             style: TextStyle(
+//               color: Colors.white,
+//               fontSize: 20,
+//               fontWeight: FontWeight.w300,
+//               letterSpacing: 3,
+//             ),
+//           ),
+//           const SizedBox(width: 8),
+//           if (trip.status == TripStatus.driving)
+//             Container(
+//               width: 8,
+//               height: 8,
+//               decoration: const BoxDecoration(
+//                 color: Color(0xFF00E676),
+//                 shape: BoxShape.circle,
+//               ),
+//             ),
+//         ],
+//       ),
+//       actions: [
+//         IconButton(
+//           icon: const Icon(Icons.history_rounded, color: Colors.white54),
+//           onPressed:
+//               () => Navigator.push(
+//                 context,
+//                 MaterialPageRoute(builder: (_) => const TripHistoryScreen()),
+//               ),
+//         ),
+//         IconButton(
+//           icon: const Icon(Icons.settings_outlined, color: Colors.white54),
+//           onPressed: () async {
+//             final result = await Navigator.push(
+//               context,
+//               MaterialPageRoute(
+//                 builder: (_) => SettingsScreen(initialImperial: _useImperial),
+//               ),
+//             );
+//             if (result is bool) setState(() => _useImperial = result);
+//           },
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildBody(BuildContext context, TripState trip) {
+//     final speed =
+//         _useImperial ? (trip.currentSpeedKmh * 0.621371) : trip.currentSpeedKmh;
+//     final unit = _useImperial ? 'mph' : 'km/h';
+
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(horizontal: 24),
+//       child: Column(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: [
+//           // ── Primary speed gauge ──────────────────────────────────────────
+//           SpeedGauge(speedValue: speed, unit: unit),
+
+//           const SizedBox(height: 48),
+
+//           // ── Stats row ────────────────────────────────────────────────────
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'AVG SPEED',
+//                   value:
+//                       _useImperial
+//                           ? (trip.averageSpeedKmh * 0.621371).toStringAsFixed(1)
+//                           : trip.averageSpeedKmh.toStringAsFixed(1),
+//                   unit: unit,
+//                   icon: Icons.show_chart_rounded,
+//                   color: const Color(0xFF64B5F6),
+//                 ),
+//               ),
+//               const SizedBox(width: 12),
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'DISTANCE',
+//                   value:
+//                       _useImperial
+//                           ? (trip.totalDistanceMeters / 1609.344)
+//                               .toStringAsFixed(2)
+//                           : (trip.totalDistanceMeters / 1000).toStringAsFixed(
+//                             2,
+//                           ),
+//                   unit: _useImperial ? 'mi' : 'km',
+//                   icon: Icons.straighten_rounded,
+//                   color: const Color(0xFFFFB74D),
+//                 ),
+//               ),
+//             ],
+//           ),
+
+//           const SizedBox(height: 12),
+
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'DURATION',
+//                   value: trip.formattedElapsed,
+//                   unit: '',
+//                   icon: Icons.timer_outlined,
+//                   color: const Color(0xFFCE93D8),
+//                   isTime: true,
+//                 ),
+//               ),
+//               const SizedBox(width: 12),
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'MAX SPEED',
+//                   value:
+//                       _useImperial
+//                           ? (trip.maxSpeedKmh * 0.621371).toStringAsFixed(1)
+//                           : trip.maxSpeedKmh.toStringAsFixed(1),
+//                   unit: unit,
+//                   icon: Icons.speed_rounded,
+//                   color: const Color(0xFFEF9A9A),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildControls(BuildContext context, TripState trip) {
+//     final isDriving = trip.status == TripStatus.driving;
+//     final isPaused = trip.status == TripStatus.paused;
+//     final isIdle =
+//         trip.status == TripStatus.idle || trip.status == TripStatus.stopped;
+
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(horizontal: 24),
+//       child: Row(
+//         children: [
+//           // Pause button (only while driving)
+//           AnimatedOpacity(
+//             opacity: isDriving ? 1.0 : 0.0,
+//             duration: const Duration(milliseconds: 300),
+//             child: GestureDetector(
+//               onTap: isDriving ? () => _pauseTrip(trip) : null,
+//               child: Container(
+//                 width: 56,
+//                 height: 56,
+//                 decoration: BoxDecoration(
+//                   color: const Color(0xFF1C1C2E),
+//                   borderRadius: BorderRadius.circular(16),
+//                   border: Border.all(color: Colors.white12),
+//                 ),
+//                 child: const Icon(
+//                   Icons.pause_rounded,
+//                   color: Colors.white70,
+//                   size: 28,
+//                 ),
+//               ),
+//             ),
+//           ),
+
+//           if (isDriving) const SizedBox(width: 12),
+
+//           // Main CTA button
+//           Expanded(
+//             child: _TripButton(
+//               status: trip.status,
+//               onTap: () => _toggleTrip(trip),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// // ─── Trip Button ──────────────────────────────────────────────────────────────
+
+// class _TripButton extends StatelessWidget {
+//   const _TripButton({required this.status, required this.onTap});
+
+//   final TripStatus status;
+//   final VoidCallback onTap;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final (label, color, icon) = switch (status) {
+//       TripStatus.idle => (
+//         'START TRIP',
+//         const Color(0xFF00E676),
+//         Icons.play_arrow_rounded,
+//       ),
+//       TripStatus.driving => (
+//         'STOP TRIP',
+//         const Color(0xFFEF5350),
+//         Icons.stop_rounded,
+//       ),
+//       TripStatus.paused => (
+//         'RESUME',
+//         const Color(0xFFFFB74D),
+//         Icons.play_arrow_rounded,
+//       ),
+//       TripStatus.stopped => (
+//         'NEW TRIP',
+//         const Color(0xFF00E676),
+//         Icons.play_arrow_rounded,
+//       ),
+//     };
+
+//     return GestureDetector(
+//       onTap: onTap,
+//       child: Container(
+//         height: 56,
+//         decoration: BoxDecoration(
+//           color: color.withOpacity(0.15),
+//           borderRadius: BorderRadius.circular(16),
+//           border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+//         ),
+//         child: Row(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Icon(icon, color: color, size: 22),
+//             const SizedBox(width: 10),
+//             Text(
+//               label,
+//               style: TextStyle(
+//                 color: color,
+//                 fontSize: 15,
+//                 fontWeight: FontWeight.w600,
+//                 letterSpacing: 1.5,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:hive_flutter/hive_flutter.dart';
+// import 'package:provider/provider.dart';
+// import 'package:wakelock_plus/wakelock_plus.dart';
+// import 'package:carplay/core/trip_manager.dart';
+// import 'package:carplay/platform_bridge/car_data_sender.dart';
+// import 'package:carplay/services/permission_service.dart';
+// import 'package:carplay/ui/settings_screen.dart';
+// import 'package:carplay/ui/trip_screen.dart';
+// import 'package:carplay/ui/widgets/speed_gauge.dart';
+// import 'package:carplay/ui/widgets/stat_card.dart';
+// import 'package:carplay/ui/widgets/gps_status_bar.dart';
+
+// class DashboardScreen extends StatefulWidget {
+//   const DashboardScreen({super.key});
+
+//   @override
+//   State<DashboardScreen> createState() => _DashboardScreenState();
+// }
+
+// class _DashboardScreenState extends State<DashboardScreen>
+//     with WidgetsBindingObserver {
+//   // FIX: Load from Hive immediately — not hardcoded false.
+//   // Old code always started with false, so every Settings open passed false
+//   // as initialImperial → toggle appeared off even if user had enabled it.
+//   bool _useImperial = false;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addObserver(this);
+//     SystemChrome.setPreferredOrientations([
+//       DeviceOrientation.portraitUp,
+//       DeviceOrientation.landscapeLeft,
+//       DeviceOrientation.landscapeRight,
+//     ]);
+//     // FIX: Load imperial preference from Hive at startup
+//     _loadSettings();
+//     _checkPermissions();
+//   }
+
+//   // FIX: Load persisted imperial preference so the dashboard shows the
+//   // correct unit immediately after a cold start or app restart.
+//   void _loadSettings() {
+//     final box = Hive.box('settings');
+//     setState(() {
+//       _useImperial = box.get('useImperial', defaultValue: false) as bool;
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     WidgetsBinding.instance.removeObserver(this);
+//     WakelockPlus.disable();
+//     super.dispose();
+//   }
+
+//   Future<void> _checkPermissions() async {
+//     final ok = await PermissionService.instance.hasLocationPermission();
+//     if (!ok && mounted) {
+//       _showPermissionDialog();
+//     }
+//   }
+
+//   void _showPermissionDialog() {
+//     showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder:
+//           (_) => AlertDialog(
+//             backgroundColor: const Color(0xFF12121E),
+//             title: const Text(
+//               'Location Required',
+//               style: TextStyle(color: Colors.white),
+//             ),
+//             content: const Text(
+//               'This app needs location permission to track speed and distance.\n\n'
+//               'Please allow "All the time" access for background tracking.',
+//               style: TextStyle(color: Colors.white70),
+//             ),
+//             actions: [
+//               TextButton(
+//                 onPressed: () {
+//                   Navigator.pop(context);
+//                   PermissionService.instance.requestAll();
+//                 },
+//                 child: const Text(
+//                   'Grant Permission',
+//                   style: TextStyle(color: Color(0xFF00E676)),
+//                 ),
+//               ),
+//               TextButton(
+//                 onPressed: () {
+//                   Navigator.pop(context);
+//                   PermissionService.instance.openSettings();
+//                 },
+//                 child: const Text(
+//                   'Open Settings',
+//                   style: TextStyle(color: Colors.white54),
+//                 ),
+//               ),
+//             ],
+//           ),
+//     );
+//   }
+
+//   Future<void> _toggleTrip(TripState trip) async {
+//     switch (trip.status) {
+//       case TripStatus.idle:
+//       case TripStatus.stopped:
+//         await WakelockPlus.enable();
+//         await trip.startTrip();
+//       case TripStatus.driving:
+//         final result = await trip.stopTrip();
+//         await WakelockPlus.disable();
+//         if (result != null && mounted) {
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(builder: (_) => TripScreen(trip: result)),
+//           );
+//         }
+//       case TripStatus.paused:
+//         trip.resumeTrip();
+//     }
+//   }
+
+//   void _pauseTrip(TripState trip) {
+//     trip.pauseTrip();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Consumer<TripState>(
+//       builder: (context, trip, _) {
+//         // Send to Android Auto on every state update
+//         CarDataSender.instance.sendUpdate(
+//           currentSpeedKmh: trip.currentSpeedKmh,
+//           averageSpeedKmh: trip.averageSpeedKmh,
+//           totalDistanceMeters: trip.totalDistanceMeters,
+//           movingTimeSeconds: trip.movingTimeSeconds,
+//           tripStatus: trip.status.name,
+//           useImperial: _useImperial,
+//         );
+
+//         return Scaffold(
+//           backgroundColor: const Color(0xFF0A0A0F),
+//           appBar: _buildAppBar(context, trip),
+//           body: SafeArea(
+//             child: Column(
+//               children: [
+//                 GpsStatusBar(
+//                   isLost: trip.gpsSignalLost,
+//                   isTracking:
+//                       trip.status == TripStatus.driving ||
+//                       trip.status == TripStatus.paused,
+//                 ),
+//                 Expanded(child: _buildBody(context, trip)),
+//                 const SizedBox(height: 24),
+//                 _buildControls(context, trip),
+//                 const SizedBox(height: 32),
+//               ],
+//             ),
+//           ),
+//         );
+//       },
+//     );
+//   }
+
+//   PreferredSizeWidget _buildAppBar(BuildContext context, TripState trip) {
+//     return AppBar(
+//       backgroundColor: const Color(0xFF0A0A0F),
+//       elevation: 0,
+//       title: Row(
+//         children: [
+//           const Text(
+//             'CarPlay',
+//             style: TextStyle(
+//               color: Colors.white,
+//               fontSize: 20,
+//               fontWeight: FontWeight.w300,
+//               letterSpacing: 3,
+//             ),
+//           ),
+//           const SizedBox(width: 8),
+//           if (trip.status == TripStatus.driving)
+//             Container(
+//               width: 8,
+//               height: 8,
+//               decoration: const BoxDecoration(
+//                 color: Color(0xFF00E676),
+//                 shape: BoxShape.circle,
+//               ),
+//             ),
+//         ],
+//       ),
+//       actions: [
+//         IconButton(
+//           icon: const Icon(Icons.history_rounded, color: Colors.white54),
+//           onPressed:
+//               () => Navigator.push(
+//                 context,
+//                 MaterialPageRoute(builder: (_) => const TripHistoryScreen()),
+//               ),
+//         ),
+//         IconButton(
+//           icon: const Icon(Icons.settings_outlined, color: Colors.white54),
+//           onPressed: () async {
+//             // FIX: SettingsScreen no longer takes initialImperial parameter.
+//             // It reads directly from Hive so it always shows the correct value.
+//             final result = await Navigator.push<bool>(
+//               context,
+//               MaterialPageRoute(builder: (_) => const SettingsScreen()),
+//             );
+//             // Update dashboard if user changed the unit
+//             if (result != null && mounted) {
+//               setState(() => _useImperial = result);
+//             }
+//           },
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildBody(BuildContext context, TripState trip) {
+//     final speed =
+//         _useImperial ? (trip.currentSpeedKmh * 0.621371) : trip.currentSpeedKmh;
+//     final unit = _useImperial ? 'mph' : 'km/h';
+
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(horizontal: 24),
+//       child: Column(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: [
+//           SpeedGauge(speedValue: speed, unit: unit),
+//           const SizedBox(height: 48),
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'AVG SPEED',
+//                   value:
+//                       _useImperial
+//                           ? (trip.averageSpeedKmh * 0.621371).toStringAsFixed(1)
+//                           : trip.averageSpeedKmh.toStringAsFixed(1),
+//                   unit: unit,
+//                   icon: Icons.show_chart_rounded,
+//                   color: const Color(0xFF64B5F6),
+//                 ),
+//               ),
+//               const SizedBox(width: 12),
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'DISTANCE',
+//                   value:
+//                       _useImperial
+//                           ? (trip.totalDistanceMeters / 1609.344)
+//                               .toStringAsFixed(2)
+//                           : (trip.totalDistanceMeters / 1000).toStringAsFixed(
+//                             2,
+//                           ),
+//                   unit: _useImperial ? 'mi' : 'km',
+//                   icon: Icons.straighten_rounded,
+//                   color: const Color(0xFFFFB74D),
+//                 ),
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 12),
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'DURATION',
+//                   value: trip.formattedElapsed,
+//                   unit: '',
+//                   icon: Icons.timer_outlined,
+//                   color: const Color(0xFFCE93D8),
+//                   isTime: true,
+//                 ),
+//               ),
+//               const SizedBox(width: 12),
+//               Expanded(
+//                 child: StatCard(
+//                   label: 'MAX SPEED',
+//                   value:
+//                       _useImperial
+//                           ? (trip.maxSpeedKmh * 0.621371).toStringAsFixed(1)
+//                           : trip.maxSpeedKmh.toStringAsFixed(1),
+//                   unit: unit,
+//                   icon: Icons.speed_rounded,
+//                   color: const Color(0xFFEF9A9A),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildControls(BuildContext context, TripState trip) {
+//     final isDriving = trip.status == TripStatus.driving;
+
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(horizontal: 24),
+//       child: Row(
+//         children: [
+//           AnimatedOpacity(
+//             opacity: isDriving ? 1.0 : 0.0,
+//             duration: const Duration(milliseconds: 300),
+//             child: GestureDetector(
+//               onTap: isDriving ? () => _pauseTrip(trip) : null,
+//               child: Container(
+//                 width: 56,
+//                 height: 56,
+//                 decoration: BoxDecoration(
+//                   color: const Color(0xFF1C1C2E),
+//                   borderRadius: BorderRadius.circular(16),
+//                   border: Border.all(color: Colors.white12),
+//                 ),
+//                 child: const Icon(
+//                   Icons.pause_rounded,
+//                   color: Colors.white70,
+//                   size: 28,
+//                 ),
+//               ),
+//             ),
+//           ),
+//           if (isDriving) const SizedBox(width: 12),
+//           Expanded(
+//             child: _TripButton(
+//               status: trip.status,
+//               onTap: () => _toggleTrip(trip),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// // ─── Trip Button ──────────────────────────────────────────────────────────────
+
+// class _TripButton extends StatelessWidget {
+//   const _TripButton({required this.status, required this.onTap});
+
+//   final TripStatus status;
+//   final VoidCallback onTap;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final (label, color, icon) = switch (status) {
+//       TripStatus.idle => (
+//         'START TRIP',
+//         const Color(0xFF00E676),
+//         Icons.play_arrow_rounded,
+//       ),
+//       TripStatus.driving => (
+//         'STOP TRIP',
+//         const Color(0xFFEF5350),
+//         Icons.stop_rounded,
+//       ),
+//       TripStatus.paused => (
+//         'RESUME',
+//         const Color(0xFFFFB74D),
+//         Icons.play_arrow_rounded,
+//       ),
+//       TripStatus.stopped => (
+//         'NEW TRIP',
+//         const Color(0xFF00E676),
+//         Icons.play_arrow_rounded,
+//       ),
+//     };
+
+//     return GestureDetector(
+//       onTap: onTap,
+//       child: Container(
+//         height: 56,
+//         decoration: BoxDecoration(
+//           color: color.withOpacity(0.15),
+//           borderRadius: BorderRadius.circular(16),
+//           border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+//         ),
+//         child: Row(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Icon(icon, color: color, size: 22),
+//             const SizedBox(width: 10),
+//             Text(
+//               label,
+//               style: TextStyle(
+//                 color: color,
+//                 fontSize: 15,
+//                 fontWeight: FontWeight.w600,
+//                 letterSpacing: 1.5,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:carplay/core/trip_manager.dart';
+import 'package:carplay/platform_bridge/car_data_sender.dart';
+import 'package:carplay/services/permission_service.dart';
+import 'package:carplay/ui/settings_screen.dart';
+import 'package:carplay/ui/trip_screen.dart';
+import 'package:carplay/ui/widgets/speed_gauge.dart';
+import 'package:carplay/ui/widgets/stat_card.dart';
+import 'package:carplay/ui/widgets/gps_status_bar.dart';
+
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    _checkPermissions();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  Future<void> _checkPermissions() async {
+    final ok = await PermissionService.instance.hasLocationPermission();
+    if (!ok && mounted) {
+      _showPermissionDialog();
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => AlertDialog(
+            backgroundColor: const Color(0xFF12121E),
+            title: const Text(
+              'Location Required',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              'This app needs location permission to track speed and distance.\n\n'
+              'Please allow "All the time" access for background tracking.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  PermissionService.instance.requestAll();
+                },
+                child: const Text(
+                  'Grant Permission',
+                  style: TextStyle(color: Color(0xFF00E676)),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  PermissionService.instance.openSettings();
+                },
+                child: const Text(
+                  'Open Settings',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<void> _toggleTrip(TripState trip) async {
+    switch (trip.status) {
+      case TripStatus.idle:
+      case TripStatus.stopped:
+        await WakelockPlus.enable();
+        await trip.startTrip();
+      case TripStatus.driving:
+        final result = await trip.stopTrip();
+        await WakelockPlus.disable();
+        if (result != null && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => TripScreen(trip: result)),
+          );
+        }
+      case TripStatus.paused:
+        trip.resumeTrip();
+    }
+  }
+
+  void _pauseTrip(TripState trip) {
+    trip.pauseTrip();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // FIX: Wrap with ValueListenableBuilder on the Hive settings box.
+    // This makes the dashboard rebuild INSTANTLY when the toggle changes —
+    // no need to come back from Settings, no restart required.
+    return ValueListenableBuilder(
+      valueListenable: Hive.box('settings').listenable(),
+      builder: (context, Box settingsBox, _) {
+        final useImperial =
+            settingsBox.get('useImperial', defaultValue: false) as bool;
+        return Consumer<TripState>(
+          builder: (context, trip, _) {
+            return _buildScaffold(context, trip, useImperial);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    TripState trip,
+    bool useImperial,
+  ) {
+    // Send to Android Auto on every state update
+    CarDataSender.instance.sendUpdate(
+      currentSpeedKmh: trip.currentSpeedKmh,
+      averageSpeedKmh: trip.averageSpeedKmh,
+      totalDistanceMeters: trip.totalDistanceMeters,
+      movingTimeSeconds: trip.movingTimeSeconds,
+      tripStatus: trip.status.name,
+      useImperial: useImperial,
+    );
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0F),
+      appBar: _buildAppBar(context, trip),
+      body: SafeArea(
+        child: Column(
+          children: [
+            GpsStatusBar(
+              isLost: trip.gpsSignalLost,
+              isTracking:
+                  trip.status == TripStatus.driving ||
+                  trip.status == TripStatus.paused,
+            ),
+            Expanded(child: _buildBody(context, trip, useImperial)),
+            const SizedBox(height: 24),
+            _buildControls(context, trip),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, TripState trip) {
+    return AppBar(
+      backgroundColor: const Color(0xFF0A0A0F),
+      elevation: 0,
+      title: Row(
+        children: [
+          const Text(
+            'CarPlay',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 3,
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (trip.status == TripStatus.driving)
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Color(0xFF00E676),
+                shape: BoxShape.circle,
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.history_rounded, color: Colors.white54),
+          onPressed:
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TripHistoryScreen()),
+              ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined, color: Colors.white54),
+          onPressed:
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context, TripState trip, bool useImperial) {
+    final speed =
+        useImperial ? (trip.currentSpeedKmh * 0.621371) : trip.currentSpeedKmh;
+    final unit = useImperial ? 'mph' : 'km/h';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SpeedGauge(speedValue: speed, unit: unit),
+          const SizedBox(height: 48),
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  label: 'AVG SPEED',
+                  value:
+                      useImperial
+                          ? (trip.averageSpeedKmh * 0.621371).toStringAsFixed(1)
+                          : trip.averageSpeedKmh.toStringAsFixed(1),
+                  unit: unit,
+                  icon: Icons.show_chart_rounded,
+                  color: const Color(0xFF64B5F6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  label: 'DISTANCE',
+                  value:
+                      useImperial
+                          ? (trip.totalDistanceMeters / 1609.344)
+                              .toStringAsFixed(2)
+                          : (trip.totalDistanceMeters / 1000).toStringAsFixed(
+                            2,
+                          ),
+                  unit: useImperial ? 'mi' : 'km',
+                  icon: Icons.straighten_rounded,
+                  color: const Color(0xFFFFB74D),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  label: 'DURATION',
+                  value: trip.formattedElapsed,
+                  unit: '',
+                  icon: Icons.timer_outlined,
+                  color: const Color(0xFFCE93D8),
+                  isTime: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  label: 'MAX SPEED',
+                  value:
+                      useImperial
+                          ? (trip.maxSpeedKmh * 0.621371).toStringAsFixed(1)
+                          : trip.maxSpeedKmh.toStringAsFixed(1),
+                  unit: unit,
+                  icon: Icons.speed_rounded,
+                  color: const Color(0xFFEF9A9A),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControls(BuildContext context, TripState trip) {
+    final isDriving = trip.status == TripStatus.driving;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          AnimatedOpacity(
+            opacity: isDriving ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: GestureDetector(
+              onTap: isDriving ? () => _pauseTrip(trip) : null,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C2E),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: const Icon(
+                  Icons.pause_rounded,
+                  color: Colors.white70,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+          if (isDriving) const SizedBox(width: 12),
+          Expanded(
+            child: _TripButton(
+              status: trip.status,
+              onTap: () => _toggleTrip(trip),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Trip Button ──────────────────────────────────────────────────────────────
+
+class _TripButton extends StatelessWidget {
+  const _TripButton({required this.status, required this.onTap});
+
+  final TripStatus status;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, icon) = switch (status) {
+      TripStatus.idle => (
+        'START TRIP',
+        const Color(0xFF00E676),
+        Icons.play_arrow_rounded,
+      ),
+      TripStatus.driving => (
+        'STOP TRIP',
+        const Color(0xFFEF5350),
+        Icons.stop_rounded,
+      ),
+      TripStatus.paused => (
+        'RESUME',
+        const Color(0xFFFFB74D),
+        Icons.play_arrow_rounded,
+      ),
+      TripStatus.stopped => (
+        'NEW TRIP',
+        const Color(0xFF00E676),
+        Icons.play_arrow_rounded,
+      ),
+    };
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

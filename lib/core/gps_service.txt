@@ -1,0 +1,94 @@
+import 'dart:async';
+import 'package:geolocator/geolocator.dart';
+import 'package:carplay/models/location_point.dart';
+
+/// Wraps geolocator with automotive-grade settings.
+/// Emits [LocationPoint] fixes every ~1 second.
+/// Handles permission checks, GPS loss, and background wakeup.
+class GpsService {
+  GpsService._();
+  static final GpsService instance = GpsService._();
+
+  StreamSubscription<Position>? _subscription;
+  final StreamController<LocationPoint> _controller =
+      StreamController<LocationPoint>.broadcast();
+
+  Stream<LocationPoint> get locationStream => _controller.stream;
+  bool get isTracking => _subscription != null;
+
+  // High-accuracy navigation settings
+  static const LocationSettings _locationSettings = LocationSettings(
+    accuracy: LocationAccuracy.bestForNavigation,
+    distanceFilter: 0, // receive every update, we filter ourselves
+    timeLimit: null,
+  );
+
+  // ─── Public API ───────────────────────────────────────────────────────────
+
+  Future<void> start() async {
+    if (_subscription != null) return;
+
+    // Validate service & permission before streaming
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _controller.addError(const LocationServiceDisabledException());
+      return;
+    }
+
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      _controller.addError(
+        Exception('Location permission not granted: $permission'),
+      );
+      return;
+    }
+
+    _subscription = Geolocator.getPositionStream(
+      locationSettings: _locationSettings,
+    ).listen(
+      (position) => _controller.add(_fromPosition(position)),
+      onError: (Object e) {
+        // Emit error downstream but keep subscription alive —
+        // GPS often recovers in tunnels / underground parking.
+        _controller.addError(e);
+      },
+      cancelOnError: false,
+    );
+  }
+
+  Future<void> stop() async {
+    await _subscription?.cancel();
+    _subscription = null;
+  }
+
+  Future<LocationPoint?> currentPosition() async {
+    try {
+      final p = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        timeLimit: const Duration(seconds: 10),
+      );
+      return _fromPosition(p);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void dispose() {
+    stop();
+    _controller.close();
+  }
+
+  // ─── Private ──────────────────────────────────────────────────────────────
+
+  LocationPoint _fromPosition(Position p) {
+    return LocationPoint(
+      latitude: p.latitude,
+      longitude: p.longitude,
+      speedMs: p.speed,
+      accuracy: p.accuracy,
+      timestamp: p.timestamp,
+      altitude: p.altitude,
+    );
+  }
+}
