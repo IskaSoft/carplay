@@ -104,35 +104,43 @@ class CarPlayAppDashboardScreen(carContext: androidx.car.app.CarContext) :
     Screen(carContext) {
 
     override fun onGetTemplate(): Template {
-        val data = CarPlayAppService.latestData.get()
+        return try {
+            val data = CarPlayAppService.latestData.get()
 
-        val statusIcon = when (data.tripStatus) {
-            "driving" -> CarIcon.Builder(
-                androidx.core.graphics.drawable.IconCompat.createWithResource(
-                    carContext, android.R.drawable.ic_media_play
-                )
-            ).build()
-            "paused" -> CarIcon.Builder(
-                androidx.core.graphics.drawable.IconCompat.createWithResource(
-                    carContext, android.R.drawable.ic_media_pause
-                )
-            ).build()
-            else -> CarIcon.Builder(
-                androidx.core.graphics.drawable.IconCompat.createWithResource(
-                    carContext, android.R.drawable.ic_dialog_info
-                )
-            ).build()
+            val statusIcon = when (data.tripStatus) {
+                "driving" -> CarIcon.Builder(
+                    androidx.core.graphics.drawable.IconCompat.createWithResource(
+                        carContext, android.R.drawable.ic_media_play
+                    )
+                ).build()
+                "paused" -> CarIcon.Builder(
+                    androidx.core.graphics.drawable.IconCompat.createWithResource(
+                        carContext, android.R.drawable.ic_media_pause
+                    )
+                ).build()
+                else -> CarIcon.Builder(
+                    androidx.core.graphics.drawable.IconCompat.createWithResource(
+                        carContext, android.R.drawable.ic_dialog_info
+                    )
+                ).build()
+            }
+
+            // Build a clean, large-text message template
+            val title = buildSpeedTitle(data)
+            val body = buildBodyText(data)
+
+            MessageTemplate.Builder(body)
+                .setTitle(title)
+                .setIcon(statusIcon)
+                .setHeaderAction(Action.APP_ICON)
+                .build()
+        } catch (e: Exception) {
+            // Fallback: show a simple error message instead of crashing
+            MessageTemplate.Builder("An error occurred. Please reopen the app on your phone.")
+                .setTitle("CarPlay")
+                .setHeaderAction(Action.APP_ICON)
+                .build()
         }
-
-        // Build a clean, large-text message template
-        val title = buildSpeedTitle(data)
-        val body = buildBodyText(data)
-
-        return MessageTemplate.Builder(body)
-            .setTitle(title)
-            .setIcon(statusIcon)
-            .setHeaderAction(Action.APP_ICON)
-            .build()
     }
 
     private fun buildSpeedTitle(data: DrivingData): String {

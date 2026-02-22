@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OUTPUT="carplay_code_dump__021.02.2026.txt"
+OUTPUT="carplay_code_dump__022.02.2026.txt"
 
 # Çykmagyna öňki faýly poz
 rm -f "$OUTPUT"
