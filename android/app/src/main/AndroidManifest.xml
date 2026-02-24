@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Required by flutter_background_service -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Required for apps using the NAVIGATION category -->
+    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
     <application
         android:label="CarPlay"
         android:name="${applicationName}"
@@ -55,7 +57,7 @@
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <!-- Use NAVIGATION for full NavigationTemplate; POI for MessageTemplate -->
-                <category android:name="androidx.car.app.category.POI" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
             </intent-filter>
             <meta-data
                 android:name="androidx.car.app.minCarApiLevel"

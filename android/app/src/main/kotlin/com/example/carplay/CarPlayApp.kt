@@ -107,23 +107,9 @@ class CarPlayAppDashboardScreen(carContext: androidx.car.app.CarContext) :
         return try {
             val data = CarPlayAppService.latestData.get()
 
-            val statusIcon = when (data.tripStatus) {
-                "driving" -> CarIcon.Builder(
-                    androidx.core.graphics.drawable.IconCompat.createWithResource(
-                        carContext, android.R.drawable.ic_media_play
-                    )
-                ).build()
-                "paused" -> CarIcon.Builder(
-                    androidx.core.graphics.drawable.IconCompat.createWithResource(
-                        carContext, android.R.drawable.ic_media_pause
-                    )
-                ).build()
-                else -> CarIcon.Builder(
-                    androidx.core.graphics.drawable.IconCompat.createWithResource(
-                        carContext, android.R.drawable.ic_dialog_info
-                    )
-                ).build()
-            }
+            // Do not use IconCompat.createWithResource with android.R.drawable 
+            // from carContext, it will throw Resources.NotFoundException and crash!
+            val statusIcon = CarIcon.APP_ICON
 
             // Build a clean, large-text message template
             val title = buildSpeedTitle(data)
@@ -136,7 +122,7 @@ class CarPlayAppDashboardScreen(carContext: androidx.car.app.CarContext) :
                 .build()
         } catch (e: Exception) {
             // Fallback: show a simple error message instead of crashing
-            MessageTemplate.Builder("An error occurred. Please reopen the app on your phone.")
+            MessageTemplate.Builder("An error occurred: ${e.message ?: "Unknown error"}")
                 .setTitle("CarPlay")
                 .setHeaderAction(Action.APP_ICON)
                 .build()
