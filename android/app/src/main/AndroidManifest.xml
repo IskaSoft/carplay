@@ -25,6 +25,10 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,11 +61,8 @@
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <!-- Use NAVIGATION for full NavigationTemplate; POI for MessageTemplate -->
-                <category android:name="androidx.car.app.category.NAVIGATION" />
+                <category android:name="androidx.car.app.category.POI" />
             </intent-filter>
-            <meta-data
-                android:name="androidx.car.app.minCarApiLevel"
-                android:value="1" />
         </service>
 
           <!-- ── flutter_background_service entries ────────────────────── -->

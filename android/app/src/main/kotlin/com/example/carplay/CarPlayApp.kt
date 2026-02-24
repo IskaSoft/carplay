@@ -107,43 +107,51 @@ class CarPlayAppDashboardScreen(carContext: androidx.car.app.CarContext) :
         return try {
             val data = CarPlayAppService.latestData.get()
 
-            // Do not use IconCompat.createWithResource with android.R.drawable 
-            // from carContext, it will throw Resources.NotFoundException and crash!
-            val statusIcon = CarIcon.APP_ICON
+            val paneBuilder = Pane.Builder()
 
-            // Build a clean, large-text message template
-            val title = buildSpeedTitle(data)
-            val body = buildBodyText(data)
+            if (data.tripStatus == "idle" || data.tripStatus == "stopped") {
+                paneBuilder.addRow(
+                    Row.Builder()
+                        .setTitle("CarPlay")
+                        .addText("Open the app on your phone to start.")
+                        .build()
+                )
+            } else {
+                paneBuilder.addRow(
+                    Row.Builder()
+                        .setTitle("Speed")
+                        .addText("${data.currentSpeedDisplay} ${data.speedUnit}")
+                        .build()
+                )
+                paneBuilder.addRow(
+                    Row.Builder()
+                        .setTitle("Average & Distance")
+                        .addText("Avg: ${data.averageSpeedDisplay} ${data.speedUnit}  |  Dist: ${data.distanceDisplay}")
+                        .build()
+                )
+                paneBuilder.addRow(
+                    Row.Builder()
+                        .setTitle("Time")
+                        .addText(data.durationDisplay)
+                        .build()
+                )
+            }
 
-            MessageTemplate.Builder(body)
-                .setTitle(title)
-                .setIcon(statusIcon)
+            PaneTemplate.Builder(paneBuilder.build())
                 .setHeaderAction(Action.APP_ICON)
+                .setTitle(if (data.tripStatus == "driving") "Driving Active" else "CarPlay")
                 .build()
+
         } catch (e: Exception) {
-            // Fallback: show a simple error message instead of crashing
-            MessageTemplate.Builder("An error occurred: ${e.message ?: "Unknown error"}")
-                .setTitle("CarPlay")
-                .setHeaderAction(Action.APP_ICON)
+            val errorMsg = e.message ?: "Unknown error"
+            val errorPane = Pane.Builder()
+                .addRow(Row.Builder().setTitle("Error").addText(errorMsg).build())
                 .build()
-        }
-    }
-
-    private fun buildSpeedTitle(data: DrivingData): String {
-        return if (data.tripStatus == "driving" || data.tripStatus == "paused") {
-            "${data.currentSpeedDisplay} ${data.speedUnit}"
-        } else {
-            "CarPlay"
-        }
-    }
-
-    private fun buildBodyText(data: DrivingData): String {
-        return if (data.tripStatus == "idle" || data.tripStatus == "stopped") {
-            "Open the CarPlay app on your phone to start a trip."
-        } else {
-            "Avg  ${data.averageSpeedDisplay} ${data.speedUnit}\n" +
-            "Dist ${data.distanceDisplay}\n" +
-            "Time ${data.durationDisplay}"
+            
+            PaneTemplate.Builder(errorPane)
+                .setHeaderAction(Action.APP_ICON)
+                .setTitle("CarPlay Error")
+                .build()
         }
     }
 }
